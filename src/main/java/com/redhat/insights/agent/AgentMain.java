@@ -32,16 +32,16 @@ public final class AgentMain {
   }
 
   public static void premain(String agentArgs, Instrumentation instrumentation) {
-    startAgent(agentArgs, instrumentation);
+    startAgent(agentArgs, Optional.of(instrumentation));
   }
 
   public static void agentmain(String agentArgs, Instrumentation instrumentation) {
-    startAgent(agentArgs, instrumentation);
+    startAgent(agentArgs, Optional.of(instrumentation));
   }
 
-  public static void startAgent(String agentArgs, Instrumentation instrumentation) {
+  public static void startAgent(String agentArgs, Optional<Instrumentation> maybeInstrumentation) {
     InsightsLogger logger = new JulLogger("AgentMain");
-    if (agentArgs == null || "".equals(agentArgs)) {
+    if (agentArgs == null || agentArgs.isEmpty()) {
       logger.error("Unable to start Red Hat Insights client: Need config arguments");
       return;
     }
@@ -55,8 +55,10 @@ public final class AgentMain {
     try {
       logger.info("Starting Red Hat Insights client");
       new AgentMain(logger, args, jarsToSend).start();
-      ClassNoticer noticer = new ClassNoticer(logger, jarsToSend);
-      instrumentation.addTransformer(noticer);
+      if (maybeInstrumentation.isPresent()) {
+        ClassNoticer noticer = new ClassNoticer(logger, jarsToSend);
+        maybeInstrumentation.get().addTransformer(noticer);
+      }
     } catch (Throwable t) {
       logger.error("Unable to start Red Hat Insights client", t);
       return;
@@ -106,4 +108,5 @@ public final class AgentMain {
             logger, configuration, simpleReport, httpClientSupplier, waitingJars);
     controller.generate();
   }
+
 }
